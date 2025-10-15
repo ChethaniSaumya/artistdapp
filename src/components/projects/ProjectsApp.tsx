@@ -298,6 +298,8 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   const [isProcessingMint, setIsProcessingMint] = useState<boolean>(false);
   const [mintCompleted, setMintCompleted] = useState<boolean>(false);
   const [transactionFailed, setTransactionFailed] = useState<boolean>(false);
+  const [collectorName, setCollectorName] = useState<string>('');
+  const [collectorEmail, setCollectorEmail] = useState<string>('');
 
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
@@ -539,6 +541,17 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       }
     }
 
+    // Validate collector information
+    if (!collectorName.trim()) {
+      setMessage({ text: 'Please enter your name', type: 'error' });
+      return;
+    }
+
+    if (!collectorEmail.trim() || !collectorEmail.includes('@')) {
+      setMessage({ text: 'Please enter a valid email address', type: 'error' });
+      return;
+    }
+
     setMinting(true);
     setIsProcessingMint(true);
     setMintCompleted(false);
@@ -549,17 +562,17 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       const pricePerNFT = basePrice || BigInt(0);
       const totalPrice = pricePerNFT * BigInt(mintAmount);
 
-      // Create a single string for name and email to match contract expectations
-      const nameString = "Collector";
-      const emailString = walletAddress;
-
       writeContract({
         address: project.contractAddress as `0x${string}`,
         abi: NFT_ABI,
         functionName: 'mint',
-        args: [BigInt(mintAmount), nameString, emailString],
+        args: [
+          BigInt(mintAmount), 
+          collectorName.trim(), 
+          collectorEmail.trim()
+        ],
         value: totalPrice,
-      } as any);
+      });
 
     } catch (error: any) {
       console.error('Minting error:', error);
@@ -607,6 +620,8 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
         }
         setMintAmount(1);
         setTxHash(undefined);
+        setCollectorName('');
+        setCollectorEmail('');
       }, 3000);
     }
   }, [isConfirmed, txHash, isProcessingMint, mintCompleted, transactionFailed]);
@@ -909,6 +924,88 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
                   <p className="total-price">
                     Total: {(displayPricePerNFT * mintAmount).toFixed(4)} POL
                   </p>
+                </div>
+
+                <div className="collector-info" style={{
+                  marginBottom: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '15px'
+                }}>
+                  <div>
+                    <label className="collector-label" style={{
+                      display: 'block',
+                      color: '#e2e8f0',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '8px'
+                    }}>
+                      Your Name
+                    </label>
+                    <input
+                      type="text"
+                      value={collectorName}
+                      onChange={(e) => setCollectorName(e.target.value)}
+                      placeholder="Enter your name"
+                      disabled={minting || isConfirming}
+                      className="collector-input"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '2px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontSize: '15px',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.border = '2px solid rgba(102, 126, 234, 0.5)';
+                        e.target.style.background = 'rgba(15, 23, 42, 0.8)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.border = '2px solid rgba(255, 255, 255, 0.1)';
+                        e.target.style.background = 'rgba(15, 23, 42, 0.6)';
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="collector-label" style={{
+                      display: 'block',
+                      color: '#e2e8f0',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '8px'
+                    }}>
+                      Your Email
+                    </label>
+                    <input
+                      type="email"
+                      value={collectorEmail}
+                      onChange={(e) => setCollectorEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      disabled={minting || isConfirming}
+                      className="collector-input"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '2px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontSize: '15px',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.border = '2px solid rgba(102, 126, 234, 0.5)';
+                        e.target.style.background = 'rgba(15, 23, 42, 0.8)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.border = '2px solid rgba(255, 255, 255, 0.1)';
+                        e.target.style.background = 'rgba(15, 23, 42, 0.6)';
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <button
