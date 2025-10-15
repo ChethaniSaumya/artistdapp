@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './ProjectsApp.css';
 
@@ -94,14 +94,19 @@ const ProjectsApp: React.FC = () => {
   const [view, setView] = useState<'gallery' | 'project'>('gallery');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [currentProject, setCurrentProject] = useState<{artistName: string, projectName: string} | null>(null);
 
   const API_BASE_URL = 'https://muse-be.onrender.com';
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     const path = window.location.pathname;
     const pathParts = path.split('/').filter(p => p);
     
     if (pathParts.length === 3 && pathParts[0] === 'projects') {
+      const artistName = decodeSlug(pathParts[1]);
+      const projectName = decodeSlug(pathParts[2]);
+      setCurrentProject({ artistName, projectName });
       setView('project');
     } else {
       fetchProjects();
@@ -109,6 +114,9 @@ const ProjectsApp: React.FC = () => {
   }, []);
 
   const fetchProjects = async (): Promise<void> => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/public/projects`);
       if (response.ok) {
@@ -119,6 +127,7 @@ const ProjectsApp: React.FC = () => {
       console.error('Error fetching projects:', error);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
@@ -127,27 +136,26 @@ const ProjectsApp: React.FC = () => {
     const projectSlug = createSlug(project.projectName);
     const newUrl = `/projects/${artistSlug}/${projectSlug}`;
     
+    setCurrentProject({
+      artistName: project.artistName,
+      projectName: project.projectName
+    });
     setView('project');
     window.history.pushState({}, '', newUrl);
   };
 
   const handleBackToGallery = (): void => {
     setView('gallery');
-    setLoading(true);
-    fetchProjects();
+    setCurrentProject(null);
     window.history.pushState({}, '', '/projects');
+    fetchProjects();
   };
 
-  const path = window.location.pathname;
-  const pathParts = path.split('/').filter(p => p);
-  const artistName = pathParts.length === 3 ? decodeSlug(pathParts[1]) : null;
-  const projectName = pathParts.length === 3 ? decodeSlug(pathParts[2]) : null;
-
-  if (view === 'project' && artistName && projectName) {
+  if (view === 'project' && currentProject) {
     return (
       <ProjectView 
-        artistName={artistName}
-        projectName={projectName}
+        artistName={currentProject.artistName}
+        projectName={currentProject.projectName}
         onBack={handleBackToGallery} 
       />
     );
@@ -287,6 +295,8 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [editMessage, setEditMessage] = useState<Message | null>(null);
+  const [isProcessingMint, setIsProcessingMint] = useState<boolean>(false);
+  const [mintCompleted, setMintCompleted] = useState<boolean>(false);
 
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
@@ -301,6 +311,8 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   } = useWriteContract();
 
   const API_BASE_URL = 'https://muse-be.onrender.com';
+  const isFetchingRef = useRef(false);
+  const projectRef = useRef<Project | null>(null);
 
   const publicClient = createPublicClient({
     chain: polygon,
@@ -308,17 +320,28 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   });
 
   useEffect(() => {
+    // Reset state when project changes
+    setMintCompleted(false);
+    setIsProcessingMint(false);
+    setTxHash(undefined);
+    setMinting(false);
+    setMessage(null);
+    
     fetchProjectData();
     checkOwnership();
   }, [artistName, projectName]);
 
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
   
   useEffect(() => {
     if (writeContractError) {
       console.error('Contract write error:', writeContractError);
       const errorMessage = writeContractError.message || 'Unknown error';
       setMinting(false);
-      setTxHash(undefined); // Reset transaction hash
+      setIsProcessingMint(false);
+      setTxHash(undefined);
 
       if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
         setMessage({ text: 'Transaction cancelled by user', type: 'error' });
@@ -331,11 +354,11 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   }, [writeContractError]);
 
   useEffect(() => {
-    if (hash && !txHash) {
+    if (hash && !txHash && isProcessingMint) {
       setTxHash(hash);
       setMessage({ text: 'Transaction submitted! Waiting for confirmation...', type: 'info' });
     }
-  }, [hash, txHash]);
+  }, [hash, txHash, isProcessingMint]);
 
   const checkOwnership = async (): Promise<void> => {
     try {
@@ -369,7 +392,11 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   };
 
   const fetchProjectData = async (): Promise<void> => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    
     try {
+      setLoading(true);
       const response = await fetch(
         `${API_BASE_URL}/api/public/projects/${encodeURIComponent(artistName)}/${encodeURIComponent(projectName)}`
       );
@@ -387,6 +414,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       setMessage({ text: 'Failed to load project', type: 'error' });
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
@@ -509,6 +537,8 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     }
 
     setMinting(true);
+    setIsProcessingMint(true);
+    setMintCompleted(false);
     setMessage({ text: 'Initiating mint transaction...', type: 'info' });
 
     try {
@@ -526,6 +556,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     } catch (error: any) {
       console.error('Minting error:', error);
       setMinting(false);
+      setIsProcessingMint(false);
       setMessage({
         text: error.message || 'Minting failed. Please try again.',
         type: 'error'
@@ -538,18 +569,35 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   });
 
   useEffect(() => {
-    if (isConfirmed && txHash) {
+    if (isConfirmed && txHash && isProcessingMint && !mintCompleted) {
+      setMintCompleted(true);
       setMinting(false);
+      setIsProcessingMint(false);
       setMessage({
         text: `Successfully minted ${mintAmount} NFT(s)!`,
         type: 'success'
       });
 
-      fetchProjectData();
-      setMintAmount(1);
-      setTxHash(undefined);
+      // Use a timeout to prevent immediate re-fetch and avoid race conditions
+      setTimeout(() => {
+        if (projectRef.current) {
+          fetchProjectData();
+        }
+        setMintAmount(1);
+        setTxHash(undefined);
+      }, 3000);
     }
-  }, [isConfirmed, txHash]);
+  }, [isConfirmed, txHash, isProcessingMint, mintCompleted]);
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      setTxHash(undefined);
+      setMinting(false);
+      setIsProcessingMint(false);
+      setMintCompleted(false);
+    };
+  }, []);
 
   if (loading) {
     return (
