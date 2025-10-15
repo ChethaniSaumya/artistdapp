@@ -169,7 +169,7 @@ const Home: React.FC = () => {
   const [touched, setTouched] = useState<TouchedFields>({});
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const API_BASE_URL = 'http://localhost:3001';
+  const API_BASE_URL = 'https://muse-be.onrender.com';
 
   // Filter projects based on active tab
   const filteredProjects = userProjects.filter(project => {
