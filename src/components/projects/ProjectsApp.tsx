@@ -312,11 +312,13 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     checkOwnership();
   }, [artistName, projectName]);
 
+  
   useEffect(() => {
     if (writeContractError) {
       console.error('Contract write error:', writeContractError);
       const errorMessage = writeContractError.message || 'Unknown error';
       setMinting(false);
+      setTxHash(undefined); // Reset transaction hash
 
       if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
         setMessage({ text: 'Transaction cancelled by user', type: 'error' });
