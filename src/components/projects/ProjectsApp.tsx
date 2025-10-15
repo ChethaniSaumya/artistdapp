@@ -297,6 +297,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   const [editMessage, setEditMessage] = useState<Message | null>(null);
   const [isProcessingMint, setIsProcessingMint] = useState<boolean>(false);
   const [mintCompleted, setMintCompleted] = useState<boolean>(false);
+  const [transactionFailed, setTransactionFailed] = useState<boolean>(false);
 
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
@@ -326,6 +327,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     setTxHash(undefined);
     setMinting(false);
     setMessage(null);
+    setTransactionFailed(false);
     
     fetchProjectData();
     checkOwnership();
@@ -341,6 +343,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       const errorMessage = writeContractError.message || 'Unknown error';
       setMinting(false);
       setIsProcessingMint(false);
+      setTransactionFailed(true);
       setTxHash(undefined);
 
       if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
@@ -354,11 +357,11 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   }, [writeContractError]);
 
   useEffect(() => {
-    if (hash && !txHash && isProcessingMint) {
+    if (hash && !txHash && isProcessingMint && !transactionFailed) {
       setTxHash(hash);
       setMessage({ text: 'Transaction submitted! Waiting for confirmation...', type: 'info' });
     }
-  }, [hash, txHash, isProcessingMint]);
+  }, [hash, txHash, isProcessingMint, transactionFailed]);
 
   const checkOwnership = async (): Promise<void> => {
     try {
@@ -539,17 +542,22 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     setMinting(true);
     setIsProcessingMint(true);
     setMintCompleted(false);
+    setTransactionFailed(false);
     setMessage({ text: 'Initiating mint transaction...', type: 'info' });
 
     try {
       const pricePerNFT = basePrice || BigInt(0);
       const totalPrice = pricePerNFT * BigInt(mintAmount);
 
+      // Create a single string for name and email to match contract expectations
+      const nameString = "Collector";
+      const emailString = walletAddress;
+
       writeContract({
         address: project.contractAddress as `0x${string}`,
         abi: NFT_ABI,
         functionName: 'mint',
-        args: [BigInt(mintAmount), "Collector", walletAddress],
+        args: [BigInt(mintAmount), nameString, emailString],
         value: totalPrice,
       } as any);
 
@@ -557,6 +565,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       console.error('Minting error:', error);
       setMinting(false);
       setIsProcessingMint(false);
+      setTransactionFailed(true);
       setMessage({
         text: error.message || 'Minting failed. Please try again.',
         type: 'error'
@@ -564,12 +573,25 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     }
   };
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess: isConfirmed, error: receiptError } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
   useEffect(() => {
-    if (isConfirmed && txHash && isProcessingMint && !mintCompleted) {
+    if (receiptError) {
+      console.error('Transaction receipt error:', receiptError);
+      setMinting(false);
+      setIsProcessingMint(false);
+      setTransactionFailed(true);
+      setMessage({
+        text: 'Transaction failed. Please try again.',
+        type: 'error'
+      });
+    }
+  }, [receiptError]);
+
+  useEffect(() => {
+    if (isConfirmed && txHash && isProcessingMint && !mintCompleted && !transactionFailed) {
       setMintCompleted(true);
       setMinting(false);
       setIsProcessingMint(false);
@@ -587,7 +609,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
         setTxHash(undefined);
       }, 3000);
     }
-  }, [isConfirmed, txHash, isProcessingMint, mintCompleted]);
+  }, [isConfirmed, txHash, isProcessingMint, mintCompleted, transactionFailed]);
 
   // Cleanup effect
   useEffect(() => {
@@ -596,6 +618,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       setMinting(false);
       setIsProcessingMint(false);
       setMintCompleted(false);
+      setTransactionFailed(false);
     };
   }, []);
 
