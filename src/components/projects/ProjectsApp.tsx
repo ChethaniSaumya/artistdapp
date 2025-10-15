@@ -95,7 +95,7 @@ const ProjectsApp: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const API_BASE_URL = 'http://localhost:3001';
+  const API_BASE_URL = 'https://muse-be.onrender.com';
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -300,7 +300,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     isPending: isWriteContractPending
   } = useWriteContract();
 
-  const API_BASE_URL = 'http://localhost:3001';
+  const API_BASE_URL = 'https://muse-be.onrender.com';
 
   const publicClient = createPublicClient({
     chain: polygon,
