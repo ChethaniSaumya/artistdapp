@@ -1,0 +1,29 @@
+.phone-input-custom .PhoneInputInput {
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  color: white;
+  width: 100%;
+}
+
+.phone-input-custom .PhoneInputInput:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #8b5cf6;
+  border-color: transparent;
+}
+
+.phone-input-custom .PhoneInputCountry {
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.phone-input-custom .PhoneInputCountrySelect {
+  background: #1f2937;
+  color: white;
+  border: none;
+}
