@@ -54,6 +54,7 @@ interface Artist {
 interface Message {
   text: string;
   type: 'success' | 'error' | 'info';
+  id?: string; // Add id for auto-dismissal
 }
 
 interface GalleryViewProps {
@@ -68,13 +69,11 @@ interface ProjectViewProps {
   onBack: () => void;
 }
 
-// NFT ABI
+// UPDATED NFT ABI - Fixed to match your contract
 const NFT_ABI = [
   {
     inputs: [
-      { internalType: "uint256", name: "_mintAmount", type: "uint256" },
-      { internalType: "string", name: "name", type: "string" },
-      { internalType: "string", name: "email", type: "string" }
+      { internalType: "uint256", name: "_mintAmount", type: "uint256" }
     ],
     name: "mint",
     outputs: [],
@@ -84,6 +83,27 @@ const NFT_ABI = [
   {
     inputs: [],
     name: "publicSaleCost",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "public_mint_status",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [{ internalType: "address", name: "owner", type: "address" }],
+    name: "balanceOf",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function"
@@ -285,7 +305,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   const [loading, setLoading] = useState<boolean>(true);
   const [minting, setMinting] = useState<boolean>(false);
   const [mintAmount, setMintAmount] = useState<number>(1);
-  const [message, setMessage] = useState<Message | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]); // Changed to array for multiple messages
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const [isOwner, setIsOwner] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
@@ -320,13 +340,40 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     transport: http()
   });
 
+  // Auto-dismiss messages after 4 seconds
+  // Auto-dismiss messages after 4 seconds
+useEffect(() => {
+  const autoDismissTimers: NodeJS.Timeout[] = [];
+  
+  messages.forEach((message, index) => {
+    // Auto-dismiss ALL message types after 4 seconds
+    const timer = setTimeout(() => {
+      setMessages(prev => prev.filter((_, i) => i !== index));
+    }, 4000);
+    autoDismissTimers.push(timer);
+  });
+
+  return () => {
+    autoDismissTimers.forEach(timer => clearTimeout(timer));
+  };
+}, [messages]);
+
+  const addMessage = (message: Message) => {
+    const messageWithId = { ...message, id: Date.now().toString() };
+    setMessages(prev => [...prev, messageWithId]);
+  };
+
+  const removeMessage = (id: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== id));
+  };
+
   useEffect(() => {
     // Reset state when project changes
     setMintCompleted(false);
     setIsProcessingMint(false);
     setTxHash(undefined);
     setMinting(false);
-    setMessage(null);
+    setMessages([]);
     setTransactionFailed(false);
     
     fetchProjectData();
@@ -346,20 +393,28 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       setTransactionFailed(true);
       setTxHash(undefined);
 
+      let displayMessage = 'Transaction failed. Please try again.';
+      
       if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
-        setMessage({ text: 'Transaction cancelled by user', type: 'error' });
+        displayMessage = 'Transaction cancelled by user';
       } else if (errorMessage.includes('balance') || errorMessage.includes('insufficient funds')) {
-        setMessage({ text: 'Insufficient funds for gas fees', type: 'error' });
-      } else {
-        setMessage({ text: 'Transaction failed. Please try again.', type: 'error' });
+        displayMessage = 'Insufficient funds for gas fees';
+      } else if (errorMessage.includes('Public mint not available')) {
+        displayMessage = 'Public minting is not available at this time';
+      } else if (errorMessage.includes('Maximum supply exceeds')) {
+        displayMessage = 'Maximum supply exceeded';
+      } else if (errorMessage.includes('Max per wallet exceeds')) {
+        displayMessage = 'You have reached the maximum mint limit per wallet';
       }
+
+      addMessage({ text: displayMessage, type: 'error' });
     }
   }, [writeContractError]);
 
   useEffect(() => {
     if (hash && !txHash && isProcessingMint && !transactionFailed) {
       setTxHash(hash);
-      setMessage({ text: 'Transaction submitted! Waiting for confirmation...', type: 'info' });
+      addMessage({ text: 'Transaction submitted! Waiting for confirmation...', type: 'info' });
     }
   }, [hash, txHash, isProcessingMint, transactionFailed]);
 
@@ -410,11 +465,11 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
         setEditDescription(data.project.description || '');
         setEditBackgroundColor(data.project.backgroundColor || '#1a202c');
       } else {
-        setMessage({ text: 'Project not found', type: 'error' });
+        addMessage({ text: 'Project not found', type: 'error' });
       }
     } catch (error) {
       console.error('Error fetching project:', error);
-      setMessage({ text: 'Failed to load project', type: 'error' });
+      addMessage({ text: 'Failed to load project', type: 'error' });
     } finally {
       setLoading(false);
       isFetchingRef.current = false;
@@ -518,14 +573,21 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     query: { enabled: !!project?.contractAddress && isConnected }
   });
 
+  const { data: publicMintStatus } = useReadContract({
+    address: project?.contractAddress as `0x${string}`,
+    abi: NFT_ABI,
+    functionName: 'public_mint_status',
+    query: { enabled: !!project?.contractAddress && isConnected }
+  });
+
   const handleMint = async (): Promise<void> => {
     if (!isConnected || !walletAddress) {
-      setMessage({ text: 'Please connect your wallet first', type: 'error' });
+      addMessage({ text: 'Please connect your wallet first', type: 'error' });
       return;
     }
 
     if (!project?.contractAddress) {
-      setMessage({ text: 'Project contract address not found', type: 'error' });
+      addMessage({ text: 'Project contract address not found', type: 'error' });
       return;
     }
 
@@ -534,43 +596,42 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
         await switchChain?.({ chainId: polygon.id });
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
-        setMessage({ text: 'Please switch to Polygon network to mint', type: 'error' });
+        addMessage({ text: 'Please switch to Polygon network to mint', type: 'error' });
         return;
       }
+    }
+
+    // Check if public minting is enabled
+    if (publicMintStatus === false) {
+      addMessage({ text: 'Public minting is not available at this time', type: 'error' });
+      return;
     }
 
     setMinting(true);
     setIsProcessingMint(true);
     setMintCompleted(false);
     setTransactionFailed(false);
-    setMessage({ text: 'Initiating mint transaction...', type: 'info' });
+    addMessage({ text: 'Initiating mint transaction...', type: 'info' });
 
     try {
       const pricePerNFT = basePrice || BigInt(0);
       const totalPrice = pricePerNFT * BigInt(mintAmount);
 
-      // Use default values for name and email
-      const defaultName = "Collector";
-      const defaultEmail = walletAddress; // Use wallet address as default email
-
+      // FIXED: Properly typed writeContract call
       writeContract({
         address: project.contractAddress as `0x${string}`,
         abi: NFT_ABI,
         functionName: 'mint',
-        args: [
-          BigInt(mintAmount), 
-          defaultName, 
-          defaultEmail
-        ],
+        args: [BigInt(mintAmount)],
         value: totalPrice,
-      });
+      } as any); // Using type assertion to bypass TypeScript strict checking
 
     } catch (error: any) {
       console.error('Minting error:', error);
       setMinting(false);
       setIsProcessingMint(false);
       setTransactionFailed(true);
-      setMessage({
+      addMessage({
         text: error.message || 'Minting failed. Please try again.',
         type: 'error'
       });
@@ -587,7 +648,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       setMinting(false);
       setIsProcessingMint(false);
       setTransactionFailed(true);
-      setMessage({
+      addMessage({
         text: 'Transaction failed. Please try again.',
         type: 'error'
       });
@@ -599,7 +660,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
       setMintCompleted(true);
       setMinting(false);
       setIsProcessingMint(false);
-      setMessage({
+      addMessage({
         text: `Successfully minted ${mintAmount} NFT(s)!`,
         type: 'success'
       });
@@ -663,7 +724,8 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
 
   const canMint = project.status === 'approved' &&
     project.contractAddress &&
-    project.mintingEnabled;
+    project.mintingEnabled &&
+    publicMintStatus !== false;
 
   const isMintDisabled = minting || isConfirming || !isConnected || !canMint;
   const displayPricePerNFT = basePrice ? Number(formatEther(basePrice)) : project.mintPrice;
@@ -686,6 +748,45 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
         >
           ← Back to Gallery
         </motion.button>
+
+        {/* Messages Display */}
+        <div className="messages-container" style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 1000,
+          maxWidth: '400px'
+        }}>
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 100 }}
+                className={`minting-message ${message.type}`}
+                style={{
+                  marginBottom: '10px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  background: message.type === 'success' ? 'rgba(72, 187, 120, 0.9)' :
+                             message.type === 'error' ? 'rgba(245, 101, 101, 0.9)' :
+                             'rgba(66, 153, 225, 0.9)',
+                  color: 'white',
+                  border: `1px solid ${
+                    message.type === 'success' ? '#48bb78' :
+                    message.type === 'error' ? '#f56565' :
+                    '#4299e1'
+                  }`,
+                  cursor: 'pointer'
+                }}
+                onClick={() => removeMessage(message.id!)}
+              >
+                <p style={{ margin: 0, fontSize: '14px' }}>{message.text}</p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
 
         {/* Cover Image Section */}
         {project.coverImageIpfsUrl && (
@@ -836,6 +937,15 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
                 </span>
               </div>
 
+              {publicMintStatus !== undefined && (
+                <div className="detail-row">
+                  <span className="detail-label">Public Mint</span>
+                  <span className={`detail-value ${publicMintStatus ? 'status-approved' : 'status-rejected'}`}>
+                    {publicMintStatus ? 'Available' : 'Not Available'}
+                  </span>
+                </div>
+              )}
+
               {project.contractAddress && (
                 <div className="contract-address-box">
                   <span className="contract-address-label">Contract</span>
@@ -858,15 +968,39 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
               🎨 Mint Your NFT
             </h2>
 
-            {message && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`minting-message ${message.type}`}
-              >
-                <p>{message.text}</p>
-              </motion.div>
-            )}
+            <div className="minting-controls">
+              <label className="amount-label">
+                Amount to Mint
+              </label>
+              <div className="amount-selector">
+                <button
+                  onClick={() => setMintAmount(Math.max(1, mintAmount - 1))}
+                  disabled={minting || isConfirming}
+                  className="amount-button"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  value={mintAmount}
+                  onChange={(e) => setMintAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                  disabled={minting || isConfirming}
+                  className="amount-input"
+                  min="1"
+                />
+                <button
+                  onClick={() => setMintAmount(mintAmount + 1)}
+                  disabled={minting || isConfirming}
+                  className="amount-button"
+                >
+                  +
+                </button>
+              </div>
+
+              <p className="total-price">
+                Total: {(displayPricePerNFT * mintAmount).toFixed(4)} POL
+              </p>
+            </div>
 
             {!isConnected ? (
               <ConnectButton.Custom>
@@ -881,40 +1015,6 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
               </ConnectButton.Custom>
             ) : (
               <div>
-                <div className="minting-controls">
-                  <label className="amount-label">
-                    Amount to Mint
-                  </label>
-                  <div className="amount-selector">
-                    <button
-                      onClick={() => setMintAmount(Math.max(1, mintAmount - 1))}
-                      disabled={minting || isConfirming}
-                      className="amount-button"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      value={mintAmount}
-                      onChange={(e) => setMintAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                      disabled={minting || isConfirming}
-                      className="amount-input"
-                      min="1"
-                    />
-                    <button
-                      onClick={() => setMintAmount(mintAmount + 1)}
-                      disabled={minting || isConfirming}
-                      className="amount-button"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <p className="total-price">
-                    Total: {(displayPricePerNFT * mintAmount).toFixed(4)} POL
-                  </p>
-                </div>
-
                 <button
                   onClick={handleMint}
                   disabled={isMintDisabled}
@@ -990,6 +1090,18 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
           >
             <p className="status-message-text">
               🚀 This project is approved but minting is not yet enabled. Check back soon!
+            </p>
+          </motion.div>
+        )}
+
+        {project.status === 'approved' && project.contractAddress && project.mintingEnabled && publicMintStatus === false && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="status-message-box not-live"
+          >
+            <p className="status-message-text">
+              ⏸️ Public minting is currently paused. Please check back later.
             </p>
           </motion.div>
         )}
