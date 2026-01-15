@@ -121,7 +121,7 @@
 
 /* Add a decorative icon or graphic (optional) */
 .auth-content::after {
-  content: "🎨";
+  content: "🎵";
   position: absolute;
   top: -40px;
   left: 50%;
