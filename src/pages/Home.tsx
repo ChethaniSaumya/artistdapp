@@ -286,24 +286,12 @@ const Home: React.FC = () => {
       [name]: value
     }));
 
-    // Real-time project name availability check
+    // Reset availability indicators when user types
     if (name === 'projectName') {
-      // Debounce the API call
-      const timeoutId = setTimeout(() => {
-        checkProjectNameAvailability(value);
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
+      setProjectNameAvailable(null);
     }
-
-    // Real-time project symbol availability check
     if (name === 'projectSymbol') {
-      // Debounce the API call
-      const timeoutId = setTimeout(() => {
-        checkProjectSymbolAvailability(value);
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
+      setProjectSymbolAvailable(null);
     }
   };
 
@@ -342,15 +330,9 @@ const Home: React.FC = () => {
     }
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = async (): Promise<boolean> => {
     if (!formData.projectName.trim()) {
       setMessage({ text: "Project name is required", type: "error" });
-      return false;
-    }
-
-    // Add project name availability check
-    if (projectNameAvailable === false) {
-      setMessage({ text: "Project name is already taken. Please choose a different name.", type: "error" });
       return false;
     }
 
@@ -359,14 +341,32 @@ const Home: React.FC = () => {
       return false;
     }
 
-    // Add project symbol availability check
-    if (projectSymbolAvailable === false) {
-      setMessage({ text: "Project symbol is already taken. Please choose a different symbol.", type: "error" });
+    if (formData.projectSymbol.length > 10) {
+      setMessage({ text: "Project symbol must be 10 characters or less", type: "error" });
       return false;
     }
 
-    if (formData.projectSymbol.length > 10) {
-      setMessage({ text: "Project symbol must be 10 characters or less", type: "error" });
+    // Check project name availability
+    setMessage({ text: "Checking project name availability...", type: "info" });
+    await checkProjectNameAvailability(formData.projectName);
+    
+    // Wait a bit for state to update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    if (projectNameAvailable === false) {
+      setMessage({ text: "Project name is already taken. Please choose a different name.", type: "error" });
+      return false;
+    }
+
+    // Check project symbol availability
+    setMessage({ text: "Checking project symbol availability...", type: "info" });
+    await checkProjectSymbolAvailability(formData.projectSymbol);
+    
+    // Wait a bit for state to update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    if (projectSymbolAvailable === false) {
+      setMessage({ text: "Project symbol is already taken. Please choose a different symbol.", type: "error" });
       return false;
     }
 
@@ -401,7 +401,8 @@ const Home: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    const isValid = await validateForm();
+    if (!isValid) return;
 
     if (!artistData || !artistData.id) {
       setMessage({ text: "Authentication error. Please log in again.", type: "error" });
@@ -520,14 +521,17 @@ const Home: React.FC = () => {
 
   const validateName = (name: string): string => {
     if (!name) return "Name is required";
-    if (name.length > 15) return "Name must be 15 characters or less";
+    if (name.length > 30) return "Name must be 30 characters or less";
     if (name.length < 2) return "Name must be at least 2 characters";
     return "";
   };
 
   const validateMobile = (mobile: string): string => {
     if (!mobile) return "Mobile number is required";
-    if (mobile.length < 10) return "Please enter a valid mobile number";
+    // Extract only digits from the entire number
+    const digitsOnly = mobile.replace(/\D/g, '');
+    if (digitsOnly.length < 10) return "Please enter a valid mobile number";
+    if (digitsOnly.length > 15) return "Phone number cannot exceed 15 digits";
     return "";
   };
 
@@ -548,7 +552,7 @@ const Home: React.FC = () => {
   };
 
   const handleLoginInputChange = (name: keyof LoginFormData, value: string) => {
-    if (name === 'name' && value.length > 15) {
+    if (name === 'name' && value.length > 30) {
       return;
     }
 
@@ -798,7 +802,7 @@ const Home: React.FC = () => {
                       <label className="login-form-label">
                         Full Name <span className="login-required">*</span>
                         <span className="login-char-count">
-                          ({loginFormData.name.length}/15 characters)
+                          ({loginFormData.name.length}/30 characters)
                         </span>
                       </label>
                       <div className="login-input-wrapper">
@@ -807,9 +811,9 @@ const Home: React.FC = () => {
                           value={loginFormData.name}
                           onChange={(e) => handleLoginInputChange('name', e.target.value)}
                           className={`login-input ${touched.name && fieldErrors.name ? 'login-input-error' : ''}`}
-                          placeholder="Enter your full name (max 15 chars)"
+                          placeholder="Enter your full name (max 30 chars)"
                           disabled={isLoggingIn}
-                          maxLength={15}
+                          maxLength={30}
                         />
                       </div>
                       {touched.name && fieldErrors.name && (
@@ -855,6 +859,9 @@ const Home: React.FC = () => {
                     <div className="login-form-group">
                       <label className="login-form-label">
                         Mobile Number <span className="login-required">*</span>
+                        <span className="login-char-count" style={{ fontSize: '0.75rem' }}>
+                          (max 15 digits)
+                        </span>
                       </label>
                       <PhoneInput
                         international
@@ -863,6 +870,9 @@ const Home: React.FC = () => {
                         onChange={handleMobileChange}
                         className={`phone-input-custom ${touched.mobile && fieldErrors.mobile ? 'phone-input-error' : ''}`}
                         disabled={isLoggingIn}
+                        numberInputProps={{
+                          maxLength: 15
+                        }}
                       />
                       {touched.mobile && fieldErrors.mobile && (
                         <motion.p
@@ -1012,12 +1022,9 @@ const Home: React.FC = () => {
                         } ${projectNameAvailable === true && formData.projectName.trim() ? 'input-success' : ''
                         }`}
                       placeholder="Enter project name"
-                      disabled={submitting || checkingProjectName}
+                      disabled={submitting}
                       required
                     />
-                    {checkingProjectName && (
-                      <small className="form-hint">Checking availability...</small>
-                    )}
                   </div>
 
                   {/* Project Symbol */}
@@ -1041,12 +1048,9 @@ const Home: React.FC = () => {
                         }`}
                       placeholder="e.g., MUSE"
                       maxLength={10}
-                      disabled={submitting || checkingProjectSymbol}
+                      disabled={submitting}
                       required
                     />
-                    {checkingProjectSymbol && (
-                      <small className="form-hint">Checking symbol availability...</small>
-                    )}
                     <small className="form-hint">Maximum 10 characters</small>
                   </div>
 
