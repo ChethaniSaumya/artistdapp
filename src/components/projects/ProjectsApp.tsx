@@ -217,7 +217,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({ projects, loading, onProjectC
           animate={{ opacity: 1, y: 0 }}
           className="gallery-title"
         >
-          🎨 Art Projects Gallery
+          🎵 Art Projects Gallery
         </motion.h1>
 
         <motion.p
@@ -965,7 +965,7 @@ useEffect(() => {
             className="minting-section"
           >
             <h2 className="minting-title">
-              🎨 Mint Your NFT
+              🎵 Mint Your NFT
             </h2>
 
             <div className="minting-controls">
