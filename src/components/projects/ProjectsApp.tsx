@@ -217,7 +217,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({ projects, loading, onProjectC
           animate={{ opacity: 1, y: 0 }}
           className="gallery-title"
         >
-          🎵 Art Projects Gallery
+          🎵 MuseCoinX MarketPlace
         </motion.h1>
 
         <motion.p
