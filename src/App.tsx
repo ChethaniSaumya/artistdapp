@@ -11,6 +11,8 @@ import '@rainbow-me/rainbowkit/styles.css';
 import ProjectsApp from "./components/projects/ProjectsApp";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MusecoinxPage from "./pages/MusecoinxPage";
+import MyDashBoard from "./pages/my-dashboard";
+import MyTestDashBoard from "./pages/my-test-dashboard";
 
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ const App = () => {
                   <Routes>
                     <Route path='/' element={<MusecoinxPage />} />
                     <Route path='/artist-dashboard' element={<Home />} />
+                    <Route path='/my-dashboard' element={<MyDashBoard />} />
+                    <Route path='/my-test-dashboard' element={<MyTestDashBoard />} />
                     <Route path="/projects" element={<ProjectsApp />} />
                     <Route path="/projects/:artistName/:projectName" element={<ProjectsApp />} />
                   </Routes>
