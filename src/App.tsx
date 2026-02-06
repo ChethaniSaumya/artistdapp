@@ -10,6 +10,7 @@ import { config } from './wagmi.config';
 import '@rainbow-me/rainbowkit/styles.css';
 import ProjectsApp from "./components/projects/ProjectsApp";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import MusecoinxPage from "./pages/MusecoinxPage";
 
 
 const queryClient = new QueryClient();
@@ -31,7 +32,8 @@ const App = () => {
               <div className="min-h-screen flex flex-col">
                 <main className="flex-1">
                   <Routes>
-                    <Route path='/' element={<Home />} />
+                    <Route path='/' element={<MusecoinxPage />} />
+                    <Route path='/artist-dashboard' element={<Home />} />
                     <Route path="/projects" element={<ProjectsApp />} />
                     <Route path="/projects/:artistName/:projectName" element={<ProjectsApp />} />
                   </Routes>
