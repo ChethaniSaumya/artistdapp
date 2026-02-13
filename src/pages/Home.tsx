@@ -349,10 +349,10 @@ const Home: React.FC = () => {
     // Check project name availability
     setMessage({ text: "Checking project name availability...", type: "info" });
     await checkProjectNameAvailability(formData.projectName);
-    
+
     // Wait a bit for state to update
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     if (projectNameAvailable === false) {
       setMessage({ text: "Project name is already taken. Please choose a different name.", type: "error" });
       return false;
@@ -361,10 +361,10 @@ const Home: React.FC = () => {
     // Check project symbol availability
     setMessage({ text: "Checking project symbol availability...", type: "info" });
     await checkProjectSymbolAvailability(formData.projectSymbol);
-    
+
     // Wait a bit for state to update
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     if (projectSymbolAvailable === false) {
       setMessage({ text: "Project symbol is already taken. Please choose a different symbol.", type: "error" });
       return false;
@@ -870,10 +870,12 @@ const Home: React.FC = () => {
                         onChange={handleMobileChange}
                         className={`phone-input-custom ${touched.mobile && fieldErrors.mobile ? 'phone-input-error' : ''}`}
                         disabled={isLoggingIn}
+                        countryCallingCodeEditable={false}
                         numberInputProps={{
-                          maxLength: 15
+                          maxLength: 19
                         }}
                       />
+
                       {touched.mobile && fieldErrors.mobile && (
                         <motion.p
                           initial={{ opacity: 0, y: -5 }}
