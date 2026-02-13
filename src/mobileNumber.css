@@ -1,29 +1,84 @@
+/* Container */
+.phone-input-custom {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* Country selector - make it equal width */
+.phone-input-custom .PhoneInputCountry {
+  background: #1f2937 !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 0.5rem !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  outline: none !important; /* ← ADD THIS */
+}
+
+/* Country select dropdown */
+.phone-input-custom .PhoneInputCountrySelect {
+  background: #1f2937 !important;
+  color: white !important;
+  font-size: 13px !important;
+  border: none !important;
+  outline: none !important; /* ← ADD THIS */
+}
+
+.phone-input-custom .PhoneInputCountry:focus,
+.phone-input-custom .PhoneInputCountry:focus-within,
+.phone-input-custom .PhoneInputCountrySelect:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #4b5563 !important;
+}
+
+/* Country flag icon */
+.phone-input-custom .PhoneInputCountryIcon {
+  width: 20px !important;
+  height: 15px !important;
+  flex-shrink: 0 !important;
+}
+
+.phone-input-custom .PhoneInputCountryIcon--international {
+  width: 20px !important;
+  height: 15px !important;
+}
+
+/* Dropdown arrow */
+.phone-input-custom .PhoneInputCountrySelectArrow {
+  font-size: 8px !important;
+  margin-left: 4px !important;
+  opacity: 0.7 !important;
+}
+
+/* Phone number input */
 .phone-input-custom .PhoneInputInput {
-  background: #1f2937;
-  border: 1px solid #4b5563;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  color: white;
-  width: 100%;
+  background: #1f2937 !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem !important;
+  color: white !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  font-size: 14px !important;
 }
 
 .phone-input-custom .PhoneInputInput:focus {
-  outline: none;
-  ring: 2px;
-  ring-color: #8b5cf6;
-  border-color: transparent;
+  outline: none !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3) !important;
 }
 
-.phone-input-custom .PhoneInputCountry {
-  background: #1f2937;
-  border: 1px solid #4b5563;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  margin-right: 0.5rem;
+/* Error state */
+.phone-input-error .PhoneInputInput {
+  border-color: #ef4444 !important;
 }
 
-.phone-input-custom .PhoneInputCountrySelect {
-  background: #1f2937;
-  color: white;
-  border: none;
+.phone-input-error .PhoneInputCountry {
+  border-color: #ef4444 !important;
 }
