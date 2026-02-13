@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './ProjectsApp.css';
-
+import logo from '../../assets/logo.png';
 // RainbowKit imports
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useReadContract, useWriteContract, useChainId, useSwitchChain, useWaitForTransactionReceipt, useDisconnect } from 'wagmi';
@@ -114,7 +114,7 @@ const ProjectsApp: React.FC = () => {
   const [view, setView] = useState<'gallery' | 'project'>('gallery');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [currentProject, setCurrentProject] = useState<{artistName: string, projectName: string} | null>(null);
+  const [currentProject, setCurrentProject] = useState<{ artistName: string, projectName: string } | null>(null);
 
   const API_BASE_URL = 'https://muse-be.onrender.com';
   const isFetchingRef = useRef(false);
@@ -122,7 +122,7 @@ const ProjectsApp: React.FC = () => {
   useEffect(() => {
     const path = window.location.pathname;
     const pathParts = path.split('/').filter(p => p);
-    
+
     if (pathParts.length === 3 && pathParts[0] === 'projects') {
       const artistName = decodeSlug(pathParts[1]);
       const projectName = decodeSlug(pathParts[2]);
@@ -136,7 +136,7 @@ const ProjectsApp: React.FC = () => {
   const fetchProjects = async (): Promise<void> => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/public/projects`);
       if (response.ok) {
@@ -155,7 +155,7 @@ const ProjectsApp: React.FC = () => {
     const artistSlug = createSlug(project.artistName);
     const projectSlug = createSlug(project.projectName);
     const newUrl = `/projects/${artistSlug}/${projectSlug}`;
-    
+
     setCurrentProject({
       artistName: project.artistName,
       projectName: project.projectName
@@ -173,19 +173,19 @@ const ProjectsApp: React.FC = () => {
 
   if (view === 'project' && currentProject) {
     return (
-      <ProjectView 
+      <ProjectView
         artistName={currentProject.artistName}
         projectName={currentProject.projectName}
-        onBack={handleBackToGallery} 
+        onBack={handleBackToGallery}
       />
     );
   }
 
   return (
-    <GalleryView 
-      projects={projects} 
-      loading={loading} 
-      onProjectClick={handleProjectClick} 
+    <GalleryView
+      projects={projects}
+      loading={loading}
+      onProjectClick={handleProjectClick}
     />
   );
 };
@@ -217,7 +217,11 @@ const GalleryView: React.FC<GalleryViewProps> = ({ projects, loading, onProjectC
           animate={{ opacity: 1, y: 0 }}
           className="gallery-title"
         >
-          🎵 MuseCoinX MarketPlace
+          <img
+            src={logo}
+            alt="MuseCoinX Logo"
+            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+          /> MuseCoinX MarketPlace
         </motion.h1>
 
         <motion.p
@@ -342,21 +346,21 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
 
   // Auto-dismiss messages after 4 seconds
   // Auto-dismiss messages after 4 seconds
-useEffect(() => {
-  const autoDismissTimers: NodeJS.Timeout[] = [];
-  
-  messages.forEach((message, index) => {
-    // Auto-dismiss ALL message types after 4 seconds
-    const timer = setTimeout(() => {
-      setMessages(prev => prev.filter((_, i) => i !== index));
-    }, 4000);
-    autoDismissTimers.push(timer);
-  });
+  useEffect(() => {
+    const autoDismissTimers: NodeJS.Timeout[] = [];
 
-  return () => {
-    autoDismissTimers.forEach(timer => clearTimeout(timer));
-  };
-}, [messages]);
+    messages.forEach((message, index) => {
+      // Auto-dismiss ALL message types after 4 seconds
+      const timer = setTimeout(() => {
+        setMessages(prev => prev.filter((_, i) => i !== index));
+      }, 4000);
+      autoDismissTimers.push(timer);
+    });
+
+    return () => {
+      autoDismissTimers.forEach(timer => clearTimeout(timer));
+    };
+  }, [messages]);
 
   const addMessage = (message: Message) => {
     const messageWithId = { ...message, id: Date.now().toString() };
@@ -375,7 +379,7 @@ useEffect(() => {
     setMinting(false);
     setMessages([]);
     setTransactionFailed(false);
-    
+
     fetchProjectData();
     checkOwnership();
   }, [artistName, projectName]);
@@ -383,7 +387,7 @@ useEffect(() => {
   useEffect(() => {
     projectRef.current = project;
   }, [project]);
-  
+
   useEffect(() => {
     if (writeContractError) {
       console.error('Contract write error:', writeContractError);
@@ -394,7 +398,7 @@ useEffect(() => {
       setTxHash(undefined);
 
       let displayMessage = 'Transaction failed. Please try again.';
-      
+
       if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
         displayMessage = 'Transaction cancelled by user';
       } else if (errorMessage.includes('balance') || errorMessage.includes('insufficient funds')) {
@@ -421,7 +425,7 @@ useEffect(() => {
   const checkOwnership = async (): Promise<void> => {
     try {
       const storedArtistData = localStorage.getItem('artistData');
-      
+
       if (!storedArtistData) {
         setIsOwner(false);
         return;
@@ -452,13 +456,13 @@ useEffect(() => {
   const fetchProjectData = async (): Promise<void> => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
-    
+
     try {
       setLoading(true);
       const response = await fetch(
         `${API_BASE_URL}/api/public/projects/${encodeURIComponent(artistName)}/${encodeURIComponent(projectName)}`
       );
-      
+
       if (response.ok) {
         const data = await response.json();
         setProject(data.project);
@@ -733,7 +737,7 @@ useEffect(() => {
   return (
     <div className="projects-container" style={{
       minHeight: '100vh',
-      background: project.backgroundColor 
+      background: project.backgroundColor
         ? project.backgroundColor
         : 'linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%)',
       padding: '48px 16px',
@@ -770,14 +774,13 @@ useEffect(() => {
                   padding: '12px 16px',
                   borderRadius: '8px',
                   background: message.type === 'success' ? 'rgba(72, 187, 120, 0.9)' :
-                             message.type === 'error' ? 'rgba(245, 101, 101, 0.9)' :
-                             'rgba(66, 153, 225, 0.9)',
+                    message.type === 'error' ? 'rgba(245, 101, 101, 0.9)' :
+                      'rgba(66, 153, 225, 0.9)',
                   color: 'white',
-                  border: `1px solid ${
-                    message.type === 'success' ? '#48bb78' :
-                    message.type === 'error' ? '#f56565' :
-                    '#4299e1'
-                  }`,
+                  border: `1px solid ${message.type === 'success' ? '#48bb78' :
+                      message.type === 'error' ? '#f56565' :
+                        '#4299e1'
+                    }`,
                   cursor: 'pointer'
                 }}
                 onClick={() => removeMessage(message.id!)}
@@ -901,8 +904,8 @@ useEffect(() => {
                   lineHeight: '1.7',
                   border: '1px solid rgba(255, 255, 255, 0.1)'
                 }}>
-                  <p style={{ 
-                    margin: 0, 
+                  <p style={{
+                    margin: 0,
                     color: '#e2e8f0',
                     fontSize: '15px',
                     whiteSpace: 'pre-wrap',
@@ -1204,14 +1207,14 @@ useEffect(() => {
                       borderRadius: '8px',
                       marginBottom: '20px',
                       background: editMessage.type === 'success' ? 'rgba(72, 187, 120, 0.2)' :
-                                 editMessage.type === 'error' ? 'rgba(245, 101, 101, 0.2)' :
-                                 'rgba(66, 153, 225, 0.2)',
+                        editMessage.type === 'error' ? 'rgba(245, 101, 101, 0.2)' :
+                          'rgba(66, 153, 225, 0.2)',
                       color: editMessage.type === 'success' ? '#68d391' :
-                             editMessage.type === 'error' ? '#fc8181' :
-                             '#63b3ed',
+                        editMessage.type === 'error' ? '#fc8181' :
+                          '#63b3ed',
                       border: `1px solid ${editMessage.type === 'success' ? '#68d391' :
-                                          editMessage.type === 'error' ? '#fc8181' :
-                                          '#63b3ed'}`
+                        editMessage.type === 'error' ? '#fc8181' :
+                          '#63b3ed'}`
                     }}
                   >
                     {editMessage.text}
@@ -1287,7 +1290,7 @@ useEffect(() => {
                   }}>
                     Recommended: 1400x350px (4:1 ratio), under 1MB • PNG, JPG, GIF, SVG, or WebP
                   </p>
-                  
+
                   <input
                     type="file"
                     id="cover-image"
@@ -1296,7 +1299,7 @@ useEffect(() => {
                     style={{ display: 'none' }}
                     disabled={saving}
                   />
-                  
+
                   <label
                     htmlFor="cover-image"
                     style={{
@@ -1401,7 +1404,7 @@ useEffect(() => {
                   }}>
                     Choose a background color for your project page
                   </p>
-                  
+
                   <div style={{
                     display: 'flex',
                     gap: '16px',
@@ -1421,7 +1424,7 @@ useEffect(() => {
                       }}
                       disabled={saving}
                     />
-                    
+
                     <div style={{ flex: 1 }}>
                       <div style={{
                         display: 'flex',
@@ -1454,7 +1457,7 @@ useEffect(() => {
                           disabled={saving}
                         />
                       </div>
-                      
+
                       {/* Preset Colors */}
                       <div style={{
                         display: 'flex',
@@ -1470,8 +1473,8 @@ useEffect(() => {
                               width: '36px',
                               height: '36px',
                               borderRadius: '8px',
-                              border: editBackgroundColor === color 
-                                ? '3px solid white' 
+                              border: editBackgroundColor === color
+                                ? '3px solid white'
                                 : '2px solid rgba(255, 255, 255, 0.2)',
                               background: color,
                               cursor: 'pointer',
@@ -1535,8 +1538,8 @@ useEffect(() => {
                     style={{
                       flex: 1,
                       padding: '14px 28px',
-                      background: saving 
-                        ? 'rgba(102, 126, 234, 0.5)' 
+                      background: saving
+                        ? 'rgba(102, 126, 234, 0.5)'
                         : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       border: 'none',
                       borderRadius: '10px',
