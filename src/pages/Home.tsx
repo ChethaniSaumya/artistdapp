@@ -168,8 +168,48 @@ const Home: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<TouchedFields>({});
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [polUsdPrice, setPolUsdPrice] = useState<number | null>(null);
 
   const API_BASE_URL = 'https://muse-be.onrender.com';
+
+  useEffect(() => {
+    const fetchPolPrice = async () => {
+      try {
+        const res = await fetch(
+          'https://api.coingecko.com/api/v3/simple/price?ids=pol-ecosystem-token&vs_currencies=usd'
+        );
+        const data = await res.json();
+        if (data['pol-ecosystem-token']?.usd) {
+          setPolUsdPrice(data['pol-ecosystem-token'].usd);
+          return;
+        }
+      } catch (_e) { /* try next source */ }
+
+      try {
+        const res = await fetch(
+          'https://api.coingecko.com/api/v3/coins/pol-ecosystem-token?localization=false&tickers=false&community_data=false&developer_data=false'
+        );
+        const data = await res.json();
+        if (data?.market_data?.current_price?.usd) {
+          setPolUsdPrice(data.market_data.current_price.usd);
+          return;
+        }
+      } catch (_e) { /* try next source */ }
+
+      try {
+        const res = await fetch(
+          'https://api.binance.com/api/v3/ticker/price?symbol=POLUSDT'
+        );
+        const data = await res.json();
+        if (data?.price) {
+          setPolUsdPrice(parseFloat(data.price));
+          return;
+        }
+      } catch (_e) { /* all sources failed */ }
+    };
+
+    fetchPolPrice();
+  }, []);
 
   // Filter projects based on active tab
   const filteredProjects = userProjects.filter(project => {
@@ -1335,9 +1375,19 @@ const Home: React.FC = () => {
                         </div>
 
                         <div className="detail-row_pd">
-                          <span className="detail-label_pd">Mint Price:</span>
+                          <span className="detail-label_pd">Mint Prixce:</span>
                           <span className="detail-value_pd detail-value-price_pd">
                             {selectedProject.mintPrice} POL
+                            {polUsdPrice && (
+                              <span style={{ color: '#94a3b8', fontSize: '13px', marginLeft: '8px' }}>
+                                {(() => {
+                                  const usdValue = selectedProject.mintPrice * polUsdPrice;
+                                  if (usdValue < 0.01) return `(≈ $${usdValue.toFixed(4)} USD)`;
+                                  if (usdValue < 1) return `(≈ $${usdValue.toFixed(3)} USD)`;
+                                  return `(≈ $${usdValue.toFixed(2)} USD)`;
+                                })()}
+                              </span>
+                            )}
                           </span>
                         </div>
 
