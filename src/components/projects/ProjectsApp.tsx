@@ -322,6 +322,7 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   const [isProcessingMint, setIsProcessingMint] = useState<boolean>(false);
   const [mintCompleted, setMintCompleted] = useState<boolean>(false);
   const [transactionFailed, setTransactionFailed] = useState<boolean>(false);
+  const [polUsdPrice, setPolUsdPrice] = useState<number | null>(null);
 
   const { address: walletAddress, isConnected } = useAccount();
   const chainId = useChainId();
@@ -387,6 +388,48 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
   useEffect(() => {
     projectRef.current = project;
   }, [project]);
+
+  useEffect(() => {
+    const fetchPolPrice = async () => {
+      // Try CoinGecko first (POL token)
+      try {
+        const res = await fetch(
+          'https://api.coingecko.com/api/v3/simple/price?ids=pol-ecosystem-token&vs_currencies=usd'
+        );
+        const data = await res.json();
+        if (data['pol-ecosystem-token']?.usd) {
+          setPolUsdPrice(data['pol-ecosystem-token'].usd);
+          return;
+        }
+      } catch (_e) { /* try next source */ }
+
+      // Fallback: CoinGecko alternate endpoint
+      try {
+        const res = await fetch(
+          'https://api.coingecko.com/api/v3/coins/pol-ecosystem-token?localization=false&tickers=false&community_data=false&developer_data=false'
+        );
+        const data = await res.json();
+        if (data?.market_data?.current_price?.usd) {
+          setPolUsdPrice(data.market_data.current_price.usd);
+          return;
+        }
+      } catch (_e) { /* try next source */ }
+
+      // Fallback: Binance public API
+      try {
+        const res = await fetch(
+          'https://api.binance.com/api/v3/ticker/price?symbol=POLUSDT'
+        );
+        const data = await res.json();
+        if (data?.price) {
+          setPolUsdPrice(parseFloat(data.price));
+          return;
+        }
+      } catch (_e) { /* all sources failed */ }
+    };
+
+    fetchPolPrice();
+  }, []);
 
   useEffect(() => {
     if (writeContractError) {
@@ -584,6 +627,13 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
     query: { enabled: !!project?.contractAddress && isConnected }
   });
 
+  const { data: mintedSupply } = useReadContract({
+    address: project?.contractAddress as `0x${string}`,
+    abi: NFT_ABI,
+    functionName: 'totalSupply',
+    query: { enabled: !!project?.contractAddress }
+  });
+
   const handleMint = async (): Promise<void> => {
     if (!isConnected || !walletAddress) {
       addMessage({ text: 'Please connect your wallet first', type: 'error' });
@@ -733,6 +783,17 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
 
   const isMintDisabled = minting || isConfirming || !isConnected || !canMint;
   const displayPricePerNFT = basePrice ? Number(formatEther(basePrice)) : project.mintPrice;
+  const priceInUsd = polUsdPrice
+    ? (() => {
+      const usdValue = displayPricePerNFT * polUsdPrice;
+      if (usdValue < 0.01) return usdValue.toFixed(4);      // e.g. $0.0107
+      if (usdValue < 1) return usdValue.toFixed(3);      // e.g. $0.107
+      return usdValue.toFixed(2);                            // e.g. $1.07
+    })()
+    : null;
+  const availableTokens = (project.totalSupply != null && mintedSupply != null)
+    ? project.totalSupply - Number(mintedSupply)
+    : null;
 
   return (
     <div className="projects-container" style={{
@@ -778,8 +839,8 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
                       'rgba(66, 153, 225, 0.9)',
                   color: 'white',
                   border: `1px solid ${message.type === 'success' ? '#48bb78' :
-                      message.type === 'error' ? '#f56565' :
-                        '#4299e1'
+                    message.type === 'error' ? '#f56565' :
+                      '#4299e1'
                     }`,
                   cursor: 'pointer'
                 }}
@@ -927,6 +988,20 @@ const ProjectView: React.FC<ProjectViewProps> = ({ artistName, projectName, onBa
                 <span className="detail-label">Mint Price</span>
                 <span className="detail-value">
                   {displayPricePerNFT} POL
+                  {priceInUsd && (
+                    <span style={{ color: '#94a3b8', fontSize: '13px', marginLeft: '8px' }}>
+                      (≈ ${priceInUsd} USD)
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              <div className="detail-row">
+                <span className="detail-label">Available</span>
+                <span className="detail-value">
+                  {availableTokens != null
+                    ? `${availableTokens.toLocaleString()} / ${project.totalSupply?.toLocaleString()}`
+                    : project.totalSupply?.toLocaleString() ?? '—'}
                 </span>
               </div>
 
