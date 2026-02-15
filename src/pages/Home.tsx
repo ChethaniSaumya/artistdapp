@@ -1375,7 +1375,7 @@ const Home: React.FC = () => {
                         </div>
 
                         <div className="detail-row_pd">
-                          <span className="detail-label_pd">Mint Prixce:</span>
+                          <span className="detail-label_pd">Mint Price:</span>
                           <span className="detail-value_pd detail-value-price_pd">
                             {selectedProject.mintPrice} POL
                             {polUsdPrice && (
