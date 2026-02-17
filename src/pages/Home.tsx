@@ -575,8 +575,8 @@ const Home: React.FC = () => {
 
   const validateName = (name: string): string => {
     if (!name) return "Name is required";
+    if (name.length < 10) return "Name must be at least 10 characters";
     if (name.length > 30) return "Name must be 30 characters or less";
-    if (name.length < 2) return "Name must be at least 2 characters";
     return "";
   };
 
@@ -865,7 +865,7 @@ const Home: React.FC = () => {
                           value={loginFormData.name}
                           onChange={(e) => handleLoginInputChange('name', e.target.value)}
                           className={`login-input ${touched.name && fieldErrors.name ? 'login-input-error' : ''}`}
-                          placeholder="Enter your full name (max 30 chars)"
+                          placeholder="Enter your full name (10-30 chars)"
                           disabled={isLoggingIn}
                           maxLength={30}
                         />
