@@ -20,6 +20,7 @@ interface Project {
   projectSymbol: string;
   totalSupply: number;
   mintPrice: number;
+  royalties?: number;
   status: 'pending' | 'approved' | 'rejected';
   imageIpfsUrl?: string;
   imageUrl?: string;
@@ -34,7 +35,8 @@ interface FormData {
   image: File | null;
   totalSupply: string;
   mintPrice: string;
-  contractOwner: string; // Add this line
+  contractOwner: string;
+  royalties: string;
 }
 
 interface LoginFormData {
@@ -154,7 +156,8 @@ const Home: React.FC = () => {
     image: null,
     totalSupply: "",
     mintPrice: "",
-    contractOwner: ""
+    contractOwner: "",
+    royalties: ""
   });
 
   // Login Form Data
@@ -419,6 +422,15 @@ const Home: React.FC = () => {
       setMessage({ text: "Mint price cannot be negative", type: "error" });
       return false;
     }
+    if (!formData.royalties || parseFloat(formData.royalties) < 0) {
+      setMessage({ text: "Royalties cannot be negative", type: "error" });
+      return false;
+    }
+
+    if (parseFloat(formData.royalties) > 100) {
+      setMessage({ text: "Royalties cannot exceed 100%", type: "error" });
+      return false;
+    }
 
     if (!formData.contractOwner.trim()) {
       setMessage({ text: "Contract owner wallet address is required", type: "error" });
@@ -471,6 +483,7 @@ const Home: React.FC = () => {
         totalSupply: parseInt(formData.totalSupply),
         mintPrice: parseFloat(formData.mintPrice),
         contractOwner: formData.contractOwner.trim(),
+        royalties: parseFloat(formData.royalties),
         image: imageBase64
       };
 
@@ -497,7 +510,8 @@ const Home: React.FC = () => {
           image: null,
           totalSupply: "",
           mintPrice: "",
-          contractOwner: ""
+          contractOwner: "",
+          royalties: ""
         });
         setProjectNameAvailable(null);
         setProjectSymbolAvailable(null);
@@ -1131,6 +1145,44 @@ const Home: React.FC = () => {
                     />
                   </div>
 
+                  {/* Royalties */}
+                  <div className="form-group">
+                    <label htmlFor="royalties" className="form-label">Royalties (%)</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        id="royalties"
+                        name="royalties"
+                        value={formData.royalties}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
+                            handleInputChange(e);
+                          }
+                        }}
+                        className="form-input"
+                        placeholder="e.g., 5"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        disabled={submitting}
+                        required
+                        style={{ paddingRight: '40px' }}
+                      />
+                      <span style={{
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#94a3b8',
+                        fontSize: '14px',
+                        pointerEvents: 'none',
+                        fontWeight: 500
+                      }}>%</span>
+                    </div>
+                    <small className="form-hint">Percentage of secondary sales (0-100)</small>
+                  </div>
+
                   <div className="form-group">
                     <label htmlFor="contractOwner" className="form-label">Contract Owner (Wallet Address)</label>
                     <input
@@ -1388,6 +1440,15 @@ const Home: React.FC = () => {
                                 })()}
                               </span>
                             )}
+                          </span>
+                        </div>
+
+                        <div className="detail-row_pd">
+                          <span className="detail-label_pd">Royalties:</span>
+                          <span className="detail-value_pd">
+                            {selectedProject.royalties !== undefined && selectedProject.royalties !== null
+                              ? `${selectedProject.royalties}%`
+                              : 'N/A'}
                           </span>
                         </div>
 
