@@ -1169,16 +1169,6 @@ const Home: React.FC = () => {
                         required
                         style={{ paddingRight: '40px' }}
                       />
-                      <span style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        color: '#94a3b8',
-                        fontSize: '14px',
-                        pointerEvents: 'none',
-                        fontWeight: 500
-                      }}>%</span>
                     </div>
                     <small className="form-hint">Percentage of secondary sales (0-100)</small>
                   </div>
